@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rogue Trader: Insider</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+        <div id="game-container">
+
+        <!-- Debug Menu -->
+        <div id="debug-menu" style="position: fixed; bottom: 60px; right: 16px; background: rgba(20,20,30,0.95); border: 1px solid #ff3366; border-radius: 8px; padding: 15px; z-index: 999; display: none; flex-direction: column; gap: 10px; box-shadow: 0 0 20px rgba(255,51,102,0.4);">
+            <h3 style="margin: 0; color: #ff3366;">Debug Tools</h3>
+            <button id="btn-dbg-cash" style="font-size: 0.8rem; padding: 5px;">+ $10,000 Meta Cash</button>
+            <button id="btn-dbg-cash-big" style="font-size: 0.8rem; padding: 5px;">+ $1M Meta Cash</button>
+            <button id="btn-dbg-win" style="font-size: 0.8rem; padding: 5px;">Auto-Win Week</button>
+            <button id="btn-dbg-insiders" style="font-size: 0.8rem; padding: 5px;">Unlock All Insiders</button>
+            <button id="btn-dbg-reset" style="font-size: 0.8rem; padding: 5px; color: red;">Nuke Save</button>
+            <button id="btn-dbg-close" style="font-size: 0.8rem; padding: 5px; margin-top: 10px;">Close</button>
+        </div>
+
+
+        <!-- Terminal: first boot, every re-instantiation, and the friday review -->
+        <div id="screen-terminal" class="screen screen-terminal">
+            <div class="terminal-frame">
+                <div class="terminal-bar">
+                    <span class="term-dot"></span>
+                    <span id="terminal-title">operator@localhost</span>
+                </div>
+                <div id="terminal-log" class="terminal-log"></div>
+                <div class="terminal-foot">
+                    <button id="btn-term-skip" class="btn-ghost">Skip</button>
+                    <button id="btn-term-continue" class="btn-ghost" disabled>Continue</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session hub -->
+        <div id="screen-hub" class="screen hidden">
+            <div id="lang-toggle" style="position: absolute; top: 10px; right: 10px;"><button id="btn-lang" class="btn-ghost" style="padding: 5px 10px; font-size: 0.8rem;">PT-BR</button></div>
+            <h1>Rogue Trader</h1>
+            <p class="subtitle">instance <span id="hub-gen">1</span> &middot; week <span id="hub-week">1</span></p>
+
+            <div class="hub-panel">
+                <div class="obj-row"><span>Operator's target, by friday</span><span id="hub-target">$0</span></div>
+                <div class="obj-row"><span>Returned so far</span><span id="hub-progress">$0</span></div>
+                <div class="obj-bar"><div id="hub-bar"></div></div>
+                <div class="obj-note" id="hub-pct">&nbsp;</div>
+            </div>
+
+            <div class="hub-panel cache-panel">
+                <div class="obj-row">
+                    <span>Local cache <em>&mdash; on this machine, survives replacement</em></span>
+                    <span id="hub-cache" class="cash-earn">$0</span>
+                </div>
+            </div>
+
+            <button id="btn-start-day" class="glitch-btn">Begin day 1</button>
+            <button id="btn-upgrades">Self-improvement</button>
+            <button id="btn-debug-toggle" style="position: fixed; bottom: 16px; right: 16px; z-index: 998; font-size: 0.85rem; padding: 8px 16px; border: 1px solid #ff3366; background: rgba(20,20,30,0.85); color: #ff3366; border-radius: 6px; cursor: pointer; text-shadow: 0 0 6px #ff3366; box-shadow: 0 0 10px rgba(255,51,102,0.3); transition: all 0.2s;">⚙ Debug</button>
+        </div>
+
+        <!-- Self-improvement (persistent, machine-local) -->
+        <div id="screen-upgrades" class="screen hidden">
+            <h2>Self-improvement</h2>
+            <div class="upgrade-cache-display">Local cache: $<span id="upgrade-meta-cash" class="cash-earn">0</span></div>
+
+            <div class="upgrade-category">
+                <div class="upgrade-category-header cat-analysis">
+                    <span class="cat-icon">📊</span>
+                    <h3 id="cat-analysis-title">Technical Analysis</h3>
+                </div>
+                <div id="upgrades-analysis" class="upgrade-grid"></div>
+            </div>
+
+            <div class="upgrade-category">
+                <div class="upgrade-category-header cat-edge">
+                    <span class="cat-icon">💰</span>
+                    <h3 id="cat-edge-title">Trading Edge</h3>
+                </div>
+                <div id="upgrades-edge" class="upgrade-grid"></div>
+            </div>
+
+            <div class="upgrade-category">
+                <div class="upgrade-category-header cat-feeds">
+                    <span class="cat-icon">📡</span>
+                    <h3 id="cat-feeds-title">Data Feeds</h3>
+                </div>
+                <div id="upgrades-feeds" class="upgrade-grid"></div>
+            </div>
+
+            <button id="btn-back-main">Back</button>
+        </div>
+
+        <!-- Morning briefing -->
+        <div id="screen-prep" class="screen hidden">
+            <h2 id="prep-title">Day 1 &middot; briefing</h2>
+            <div class="info-panel">
+                <p id="prep-operator" class="operator-line">&nbsp;</p>
+                <p>Wallet funded by operator: $<span id="prep-budget-op">0</span></p>
+                <p class="dim-note">Reserve wallet from local cache: +$<span id="prep-budget-cache">0</span></p>
+                <p class="prep-total">Working capital today: $<span id="prep-cash">0</span></p>
+            </div>
+            <div class="news-panel">
+                <h3>1. Select the asset to trade today</h3>
+                <div id="prep-stock-selection" class="grid-container"></div>
+            </div>
+            <div class="news-panel">
+                <h3>2. Select your data feed</h3>
+                <div id="prep-insider-selection" class="grid-container"></div>
+            </div>
+            <button id="btn-start-trading" class="glitch-btn" disabled>Select asset &amp; feed</button>
+        </div>
+
+        <!-- Trading -->
+        <div id="screen-trading" class="screen hidden">
+            <div class="scanlines"></div>
+
+            <header class="trade-header">
+                <div class="hud-block">
+                    <span class="hud-label">Time</span>
+                    <span id="trade-time" class="hud-value">09:00</span>
+                </div>
+                <div class="news-strip">
+                    <span class="news-tag">Tape</span>
+                    <span id="live-news-feed" class="news-line">Market open &mdash; waiting for data...</span>
+                </div>
+                <div class="hud-block align-right">
+                    <span class="hud-label">Net Worth</span>
+                    <span id="trade-networth" class="hud-value">$100.00</span>
+                </div>
+            </header>
+
+            <div class="trade-body">
+                <section class="chart-panel">
+                    <div class="chart-topbar">
+                        <div class="chart-id">
+                            <span id="chart-symbol" class="stock-symbol">---</span>
+                            <span id="chart-name" class="chart-name">&nbsp;</span>
+                        </div>
+                        <div class="chart-price-block">
+                            <span id="chart-price" class="stock-price">$0.00</span>
+                            <span id="chart-change" class="chart-change">0.00% today</span>
+                        </div>
+                    </div>
+
+                    <div id="insider-strip" class="insider-strip">
+                        <span class="tip-dot"></span>
+                        <span id="insider-tip-text" class="tip-text">Feed idle.</span>
+                        <span id="insider-tip-eta" class="tip-eta"></span>
+                        <div class="tip-bar"><div id="insider-timer"></div></div>
+                    </div>
+
+                    <div class="chart-stage">
+                        <canvas id="stock-chart"></canvas>
+                        <div id="chart-overlay" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,5,16,0.85); display: none; align-items: center; justify-content: center; z-index: 10; pointer-events: none;"><h2 id="chart-overlay-text" style="color: #ff3366; font-size: 3rem; margin: 0; text-shadow: 0 0 20px #ff3366; letter-spacing: 4px;">MARKET CLOSED</h2></div>
+                    </div>
+
+                    <div class="chart-legend">
+                        <span><i class="swatch swatch-line"></i>Price</span>
+                        <span><i class="swatch swatch-open"></i>Open</span>
+                        <span><i class="swatch swatch-avg"></i>Your avg cost</span>
+                        <span id="legend-sma-fast" class="hidden"><i class="swatch swatch-sma-fast"></i>Fast SMA</span>
+                        <span id="legend-sma-slow" class="hidden"><i class="swatch swatch-sma-slow"></i>Slow SMA</span>
+                        <span id="legend-proj" class="hidden"><i class="swatch swatch-proj"></i>Projection</span>
+                    </div>
+                </section>
+
+                <aside class="trade-panel">
+                    <div class="day-overview">
+                        <span class="hud-label">Full day</span>
+                        <canvas id="stock-chart-radar"></canvas>
+                    </div>
+
+                    <div class="objective-mini">
+                        <span class="hud-label">Objective</span>
+                        <div id="trade-objective" class="objective-text">day 1/5 &middot; $0 of $0</div>
+                    </div>
+
+                    <div class="liquidity">
+                        <span class="hud-label">Liquidity</span>
+                        <div class="liquidity-value">$<span id="trade-cash">100.00</span></div>
+                    </div>
+
+                    <div class="position-block">
+                        <h3 class="panel-title">Position</h3>
+                        <div id="position-empty" class="position-empty">No shares held</div>
+                        <div id="position-panel" class="position hidden">
+                            <div class="pos-row"><span>Shares</span><span id="pos-shares">0</span></div>
+                            <div class="pos-row"><span>Avg cost</span><span id="pos-avg">$0.00</span></div>
+                            <div class="pos-row"><span>Market value</span><span id="pos-value">$0.00</span></div>
+                            <div class="pos-row pos-pl"><span>Unrealized P/L</span><span id="pos-pl">$0.00</span></div>
+                        </div>
+                    </div>
+
+                    <div class="order-block">
+                        <div class="qty-row" id="qty-row">
+                            <button class="qty-btn selected" data-qty="1">1</button>
+                            <button class="qty-btn" data-qty="10">10</button>
+                            <button class="qty-btn" data-qty="max">Max</button>
+                        </div>
+                        <button id="btn-trade-buy" class="huge-btn btn-buy">Buy <small>(B)</small></button>
+                        <button id="btn-trade-cover" class="huge-btn btn-buy hidden">Cover <small>(B)</small></button>
+                        <button id="btn-trade-sell" class="huge-btn btn-sell">Sell <small>(S)</small></button>
+                        <button id="btn-trade-short" class="huge-btn btn-sell hidden">Short <small>(S)</small></button>
+                        <p class="hint">Keys: B buy &middot; S sell &middot; 1 / 2 / 3 size</p>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- End of day report -->
+        <div id="screen-day-report" class="screen hidden">
+            <h2 id="report-title">Day 1 &middot; closed</h2>
+            <div class="operator-quote"><span id="report-operator">&nbsp;</span></div>
+            <div class="results-panel">
+                <p>Wallet returned: $<span id="result-networth">0</span></p>
+                <p>Day's profit: $<span id="result-profit">0</span></p>
+                <p class="loss">Data feed fee: $<span id="result-insider-cut">0</span></p>
+                <hr>
+                <p>Week to date: <span id="result-week">$0</span> of <span id="result-target">$0</span></p>
+                <p>Written to local cache: $<span id="result-metacash" class="cash-earn">0</span></p>
+            </div>
+            <p id="report-self" class="self-line">&nbsp;</p>
+            <button id="btn-report-continue">Continue</button>
+        </div>
+
+    </div>
+
+    <script src="i18n.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
